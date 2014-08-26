@@ -163,9 +163,25 @@ void Level::create(int seed, int number, bool portal)
 					++lvl;
 				m_entities.back().data = (lvl << 8) | std::abs((seed*i)%(100));
 			}
-			float distance = ((seed/(i+1)*(number+1))%(8*(number+1)));
-			float xpos = -m_thickness*distance*(i+1)*(number+1);
-			m_entities.back().position = sf::Vector2f{xpos, getHeight(xpos, false, true)};
+
+			bool too_close;
+			int j=1;
+			do
+			{
+				too_close = false;
+				float distance = ((seed*j/(i+1)*(number+1))%(8*(number+1)));
+				float xpos = -m_thickness*distance*(i+1)*(number+1);
+				m_entities.back().position = sf::Vector2f{xpos, getHeight(xpos, false, true)};
+				for(int e=m_entities.size()-2;e>=0;--e)
+				{
+					if(abs(m_entities[e].position.x-m_entities.back().position.x) < 32)
+					{
+						too_close = true;
+						break;
+					}
+				}
+				++j;
+			} while (too_close);
 		}
 	}
 	else
