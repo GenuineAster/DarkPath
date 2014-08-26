@@ -15,7 +15,8 @@ struct Entity
 
 	Type type;
 	sf::Vector2f position;
-	uint16_t data;
+	uint8_t data;
+	uint8_t level;
 	bool valid=true;
 };
 
@@ -154,14 +155,15 @@ void Level::create(int seed, int number, bool portal)
 			m_entities.back().type=Entity::Increase;
 			if(!(i%9))
 			{
-				m_entities.back().data = (0 << 4) | 1;
+				m_entities.back().data = 1;
 			}
 			else
 			{
 				int lvl = ((seed*number)%(i+1));
 				if(lvl==0)
 					++lvl;
-				m_entities.back().data = (lvl << 8) | std::abs((seed*i)%(100));
+				m_entities.back().level = lvl;
+				m_entities.back().data = std::abs((seed*i)%(100));
 			}
 
 			bool too_close;
@@ -267,7 +269,7 @@ void Level::draw(sf::RenderTarget& target)
 		}
 		if(e.type==Entity::Increase)
 		{
-			if(e.data>>4==0)
+			if(e.data==0)
 			{
 				ent.setPosition(e.position);
 				ent.setFillColor({50, 50, 50});
@@ -376,9 +378,9 @@ bool Game::processEvent(sf::Event &event)
 					}
 					else if(e->type == Entity::Increase)
 					{
-						int lvl = (e->data)>>8;
-						int amount = (e->data)&0xFF;
-						m_levels[lvl].increase((e->data)&0xFF);
+						int lvl = e->level;
+						int amount = e->data;
+						m_levels[lvl].increase(amount);
 						e->valid=false;
 					}
 				}
