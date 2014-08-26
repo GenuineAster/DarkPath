@@ -184,7 +184,7 @@ void Level::create(int seed, int number, bool portal)
 					}
 				}
 				++j;
-			} while (too_close);
+			} while (too_close||j>100);
 		}
 	}
 	else
