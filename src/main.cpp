@@ -55,6 +55,7 @@ private:
 		int8_t climb_direction;
 	} m_player;
 	int m_current_level;
+	int m_generate_atleast_to_this_level;
 
 public:
 	void setTarget(sf::RenderTarget &target);
@@ -380,6 +381,8 @@ bool Game::processEvent(sf::Event &event)
 					{
 						int lvl = e->level;
 						int amount = e->data;
+						m_generate_atleast_to_this_level = lvl;
+						generateLevels();
 						m_levels[lvl].increase(amount);
 						e->valid=false;
 					}
@@ -399,7 +402,7 @@ bool Game::processEvent(sf::Event &event)
 
 void Game::generateLevels()
 {
-	for(int i=m_levels.size()-1;i<m_current_level;++i)
+	for(int i=m_levels.size()-1;i<std::max(m_current_level, m_generate_atleast_to_this_level);++i)
 	{
 		m_levels.emplace_back();
 		m_levels.back().create(std::time(NULL), i);
@@ -452,6 +455,7 @@ Game::Game()
 	m_view.reset({0.f,0.f,320.f,320.f});
 	m_view.setRotation(180.f);
 	m_current_level=0;
+	m_generate_atleast_to_this_level=0;
 	m_levels.emplace_back();
 	m_levels[m_current_level].create(std::time(NULL), 0, true);
 	m_player.shape.setPointCount(3);
