@@ -315,13 +315,21 @@ float Level::getHeight(float x, bool mezzanine, bool predictive)
 
 Entity* Level::getEntity(sf::Vector2f position)
 {
-	sf::FloatRect player{position-sf::Vector2f{5.f,7.f}, {10.f, 14.f}};
+	Entity* ent=nullptr;
+	int ent_distance=0;
 	for(auto& e:m_entities)
 	{
-		if(sf::FloatRect{{e.position.x-15.f, (e.position.y==0.f?getHeight(e.position.x):e.position.y)}, {30.f, 30.f}}.intersects(player))//contains(position))
-			return &e;
+		int distance=abs(e.position.x-position.x);
+		if(distance<=16)
+		{
+			if(ent==nullptr||distance<ent_distance)
+			{
+				ent=&e;
+				ent_distance=distance;
+			}
+		}
 	}
-	return nullptr;
+	return ent;
 }
 
 Level::Level() : m_gap(0.f), m_thickness(24.f)
