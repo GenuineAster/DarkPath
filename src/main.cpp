@@ -15,7 +15,8 @@ struct Entity
 
 	Type type;
 	sf::Vector2f position;
-	uint16_t data;
+	uint8_t data;
+	uint8_t level;
 	bool valid=true;
 };
 
@@ -54,6 +55,7 @@ private:
 		int8_t climb_direction;
 	} m_player;
 	int m_current_level;
+	int m_generate_atleast_to_this_level;
 
 public:
 	void setTarget(sf::RenderTarget &target);
@@ -154,18 +156,35 @@ void Level::create(int seed, int number, bool portal)
 			m_entities.back().type=Entity::Increase;
 			if(!(i%9))
 			{
-				m_entities.back().data = (0 << 4) | 1;
+				m_entities.back().data = 1;
 			}
 			else
 			{
 				int lvl = ((seed*number)%(i+1));
 				if(lvl==0)
 					++lvl;
-				m_entities.back().data = (lvl << 8) | std::abs((seed*i)%(100));
+				m_entities.back().level = lvl;
+				m_entities.back().data = std::abs((seed*i)%(100));
 			}
-			float distance = ((seed/(i+1)*(number+1))%(8*(number+1)));
-			float xpos = -m_thickness*distance*(i+1)*(number+1);
-			m_entities.back().position = sf::Vector2f{xpos, getHeight(xpos, false, true)};
+
+			bool too_close;
+			int j=1;
+			do
+			{
+				too_close = false;
+				float distance = ((seed*j/(i+1)*(number+1))%(8*(number+1)));
+				float xpos = -m_thickness*distance*(i+1)*(number+1);
+				m_entities.back().position = sf::Vector2f{xpos, getHeight(xpos, false, true)};
+				for(int e=m_entities.size()-2;e>=0;--e)
+				{
+					if(abs(m_entities[e].position.x-m_entities.back().position.x) < 32)
+					{
+						too_close = true;
+						break;
+					}
+				}
+				++j;
+			} while (too_close&&j<100);
 		}
 	}
 	else
@@ -251,7 +270,7 @@ void Level::draw(sf::RenderTarget& target)
 		}
 		if(e.type==Entity::Increase)
 		{
-			if(e.data>>4==0)
+			if(e.data==0)
 			{
 				ent.setPosition(e.position);
 				ent.setFillColor({50, 50, 50});
@@ -299,13 +318,21 @@ float Level::getHeight(float x, bool mezzanine, bool predictive)
 
 Entity* Level::getEntity(sf::Vector2f position)
 {
-	sf::FloatRect player{position-sf::Vector2f{5.f,7.f}, {10.f, 14.f}};
+	Entity* ent=nullptr;
+	int ent_distance=0;
 	for(auto& e:m_entities)
 	{
-		if(sf::FloatRect{{e.position.x-15.f, (e.position.y==0.f?getHeight(e.position.x):e.position.y)}, {30.f, 30.f}}.intersects(player))//contains(position))
-			return &e;
+		int distance=abs(e.position.x-position.x);
+		if(distance<=16)
+		{
+			if(ent==nullptr||distance<ent_distance)
+			{
+				ent=&e;
+				ent_distance=distance;
+			}
+		}
 	}
-	return nullptr;
+	return ent;
 }
 
 Level::Level() : m_gap(0.f), m_thickness(24.f)
@@ -352,9 +379,11 @@ bool Game::processEvent(sf::Event &event)
 					}
 					else if(e->type == Entity::Increase)
 					{
-						int lvl = (e->data)>>8;
-						int amount = (e->data)&0xFF;
-						m_levels[lvl].increase((e->data)&0xFF);
+						int lvl = e->level;
+						int amount = e->data;
+						m_generate_atleast_to_this_level = lvl;
+						generateLevels();
+						m_levels[lvl].increase(amount);
 						e->valid=false;
 					}
 				}
@@ -373,7 +402,7 @@ bool Game::processEvent(sf::Event &event)
 
 void Game::generateLevels()
 {
-	for(int i=m_levels.size()-1;i<m_current_level;++i)
+	for(int i=m_levels.size()-1;i<std::max(m_current_level, m_generate_atleast_to_this_level);++i)
 	{
 		m_levels.emplace_back();
 		m_levels.back().create(std::time(NULL), i);
@@ -426,6 +455,7 @@ Game::Game()
 	m_view.reset({0.f,0.f,320.f,320.f});
 	m_view.setRotation(180.f);
 	m_current_level=0;
+	m_generate_atleast_to_this_level=0;
 	m_levels.emplace_back();
 	m_levels[m_current_level].create(std::time(NULL), 0, true);
 	m_player.shape.setPointCount(3);
